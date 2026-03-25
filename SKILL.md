@@ -11,7 +11,7 @@ Set up a private mirror workflow when the user needs both of these outcomes:
 
 Do not use the platform Fork button for this workflow. Create a new empty private repository and mirror the public upstream into it manually.
 
-Collect the missing private repository name before running commands. Default the rest of the workflow to the house convention unless the repository state proves otherwise.
+Collect the missing local working copy folder name and private repository name before running commands. Default the rest of the workflow to the house convention unless the repository state proves otherwise.
 
 ## Decide the path
 
@@ -21,12 +21,25 @@ Use this skill for either of these cases:
 
 If the user only wants a normal public fork and does not care about private derivative work, this skill is unnecessary.
 
-## Gather the only required user input
+## Gather the required user input
 
-Ask only this when it is missing:
-1. What is the private repository name?
+When the workflow needs user input and these values are missing, ask in this exact order:
+1. Ask for the local clone project folder name first.
+2. Then ask whether the GitHub repository name should stay the same as the local clone folder name.
+3. Only if the answer is no, ask for the GitHub repository name explicitly.
 
 Do not ask for platform, owner, transport, or branch names by default.
+
+When asking for the local clone project folder name:
+- Derive 2 to 4 concise reference names from the upstream repository URL or path before asking.
+- Include the original upstream repository basename as the first reference option when it is available.
+- If the upstream name contains separators, also offer normalized variants that are plausible local folder names.
+- Keep the references short and practical rather than turning the prompt into a long naming workshop.
+
+Example prompt shape:
+1. Ask for the local clone project folder name first, for example `repo`, `repo-private`, or `repo-dev`. What local folder name do you want?
+2. Should the GitHub repository name stay the same as that local folder name?
+3. If not, what GitHub repository name do you want?
 
 Use these defaults unless the repository state or user instruction says otherwise:
 - Hosting platform: GitHub.
@@ -55,7 +68,7 @@ Resolve the owner automatically first:
 gh api user --jq .login
 ```
 
-Create the empty private repository with the resolved owner and confirmed name:
+Create the empty private repository with the resolved owner and confirmed GitHub repository name:
 
 ```bash
 gh repo create <owner>/<repo-name> --private --disable-issues --disable-wiki --confirm
@@ -104,12 +117,12 @@ Commands:
 
 ```bash
 git clone --bare <upstream-url>
-cd <repo-name>.git
+cd <upstream-repo-name>.git
 git push --mirror <private-origin-url>
 cd ..
-rm -rf <repo-name>.git
-git clone <private-origin-url>
-cd <working-copy>
+rm -rf <upstream-repo-name>.git
+git clone <private-origin-url> <local-working-copy-folder>
+cd <local-working-copy-folder>
 git remote add upstream <upstream-url>
 git remote -v
 ```
@@ -247,7 +260,13 @@ When helping the user, be explicit about:
 - Which remote is `upstream`.
 - That `sync-upstream` is the branch used to receive upstream merges by default.
 - That `main` is the internal development branch by default.
+- That the local clone folder name is collected first.
+- That the GitHub repository name is confirmed separately and may match the local folder name or differ from it.
 
 Use concrete command sequences with the actual branch names when they are known. Default to `sync-upstream` and `main` unless the repository already uses a different layout.
 
-When the user has not yet provided the private repository name, ask only for that value instead of expanding into a multi-question intake.
+When the user has not yet provided the local clone project folder name, ask for that first and include 2 to 4 reference names derived from the upstream repository address.
+
+After the local clone project folder name is known, ask whether the GitHub repository name should stay the same.
+
+Only ask for the GitHub repository name explicitly when the user says it should be different.
