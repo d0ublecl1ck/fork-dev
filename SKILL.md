@@ -187,6 +187,58 @@ Before declaring the workflow complete, verify all of these:
 - `git fetch upstream` succeeds.
 - The target integration branch is in sync after merge or rebase.
 
+## Persist the workflow into AGENTS.md
+
+After the private mirror workflow is established, automatically write the repository-specific sync and development guidance into the target project's `AGENTS.md`.
+
+Write or update these facts with the real resolved values from the completed setup:
+- `origin` remote URL.
+- `upstream` remote URL.
+- The primary local working copy path.
+- The internal development branch.
+- The upstream integration branch.
+- The standard sync command sequence for this repository.
+- Any repository-specific warning about long-lived divergence or merge precautions that was discovered during setup.
+
+Rules:
+- Update the target project's `AGENTS.md`, not a global rule file, unless the user explicitly asks for a system-wide rule.
+- If `AGENTS.md` does not exist in the target repository, create it.
+- Prefer updating an existing matching section instead of duplicating sync instructions.
+- Keep the recorded guidance concise, operational, and repository-specific.
+- Do not finish the task immediately after remote setup; include the `AGENTS.md` update as part of completion.
+
+Use this fixed section title and field order so the output stays consistent across repositories:
+
+```md
+## Git Mirror Workflow
+
+- Private mirror remote is `origin`: `<origin-url>`
+- Official upstream remote is `upstream`: `<upstream-url>`
+- Primary local working copy path is `<local-worktree-path>`
+- Internal development branch is `<internal-dev-branch>`
+- Upstream integration branch is `<upstream-integration-branch>`
+- Do not merge `<upstream-remote>/<upstream-default-branch>` directly into `<internal-dev-branch>` without first updating the local `<upstream-integration-branch>` branch and reviewing the delta<optional-warning-suffix>
+- Use this standard sync flow unless the user explicitly requests a different branch strategy:
+
+```bash
+cd <local-worktree-path>
+git fetch upstream
+git checkout <upstream-integration-branch>
+git merge upstream/<upstream-default-branch>
+git push origin <upstream-integration-branch>
+git checkout <internal-dev-branch>
+git merge <upstream-integration-branch>
+git push origin <internal-dev-branch>
+```
+```
+
+Template rules:
+- Keep the section title exactly `## Git Mirror Workflow`.
+- Keep the bullet order exactly as shown.
+- Replace placeholders with resolved real values.
+- Omit `<optional-warning-suffix>` when no special warning is needed.
+- If the repository already has a `## Git Mirror Workflow` section, update it in place instead of appending a second copy.
+
 ## Communication pattern
 
 When helping the user, be explicit about:
