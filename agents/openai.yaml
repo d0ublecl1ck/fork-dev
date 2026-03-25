@@ -1,0 +1,4 @@
+interface:
+  display_name: "Fork Dev"
+  short_description: "Private mirror setup and upstream sync workflow"
+  default_prompt: "Use $fork-dev to create a private mirror of a public repository and keep it synced with upstream safely."
