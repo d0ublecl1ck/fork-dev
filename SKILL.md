@@ -13,6 +13,32 @@ Do not use the platform Fork button for this workflow. Create a new empty privat
 
 Collect the missing local working copy folder name and private repository name before running commands. Default the rest of the workflow to the house convention unless the repository state proves otherwise.
 
+## Phase-Gated Workflow
+
+Follow this phase gate before the detailed path workflow below.
+
+### Development Phase
+
+1. Decide whether the task is creating a new private mirror or repairing an existing public-fork workflow.
+2. Collect only the required missing inputs: local clone folder name, whether the private repository name matches it, and the private repository name if needed.
+3. Inspect the real Git and hosting state before mutating remotes, branches, or repositories.
+4. Create or verify the private destination repository before pushing any mirrored history.
+5. Establish the remote model: private repository as `origin`, official public repository as `upstream`.
+6. Sync through the configured integration branch before merging into the internal development branch.
+7. Persist repository-specific workflow facts into the target project's `AGENTS.md`.
+
+### Inspection Phase
+
+Run this fixed checklist before handoff:
+
+- Verify the private destination repository exists, is private, and is writable.
+- Verify `origin` points to the private repository and `upstream` points to the official public repository.
+- Verify the branch layout includes the internal development branch and upstream integration branch.
+- Verify `git fetch upstream` succeeds before any upstream merge claim.
+- Verify no uncommitted user work was overwritten, discarded, or hidden by the workflow.
+- Verify the target project's `AGENTS.md` records the resolved remotes, local working copy path, branch names, and bounded sync flow.
+- Verify destructive Git operations such as remote replacement, branch deletion, force push, or mirror push were preceded by read-only inspection and scoped to the intended repository.
+
 ## Decide the path
 
 Use this skill for either of these cases:
@@ -157,12 +183,18 @@ If multiple long-lived branches matter, push them explicitly or mirror from a cl
 
 ## Sync upstream changes safely
 
-When the private mirror already exists, prefer this baseline flow:
+When the private mirror already exists, use a bounded sync flow that keeps each merge reviewable and avoids dumping huge diffs into the agent context.
 
 ```bash
 git fetch upstream
 git checkout sync-upstream
+git rev-list --left-right --count origin/main...upstream/<upstream-default-branch>
+git log --oneline --reverse origin/main..upstream/<upstream-default-branch>
+git diff --shortstat origin/main...upstream/<upstream-default-branch>
+# For small deltas only:
 git merge upstream/<upstream-default-branch>
+# For large deltas, merge a reviewed batch endpoint instead of the full upstream branch:
+# git merge <upstream-batch-commit>
 git push origin sync-upstream
 git checkout main
 git merge sync-upstream
@@ -176,6 +208,13 @@ Before syncing:
 - Confirm the current branch with `git branch --show-current`.
 - Fetch first; do not merge blind.
 - Verify the branch layout if the repository state suggests a different convention.
+- Inspect branch divergence with `git rev-list --left-right --count`.
+- List upstream-only commits in chronological order with `git log --oneline --reverse`.
+- Estimate total patch size with `git diff --shortstat`.
+- If the upstream delta is larger than roughly 1000 changed lines, split it into ordered commit batches.
+- Choose each batch so the changed code is usually around 500 to 1000 lines, using upstream merge commits or cohesive feature/fix groups when possible.
+- Review each batch with `git diff --stat` and targeted file diffs; avoid running full-diff commands that can flood the model context.
+- After every batch, resolve conflicts, run the narrowest relevant verification, commit the batch merge, and push the integration branch before continuing.
 
 ## Resolve conflicts pragmatically
 
@@ -210,7 +249,7 @@ Write or update these facts with the real resolved values from the completed set
 - The primary local working copy path.
 - The internal development branch.
 - The upstream integration branch.
-- The standard sync command sequence for this repository.
+- The bounded sync command sequence for this repository.
 - Any repository-specific warning about long-lived divergence or merge precautions that was discovered during setup.
 
 Rules:
@@ -231,13 +270,20 @@ Use this fixed section title and field order so the output stays consistent acro
 - Internal development branch is `<internal-dev-branch>`
 - Upstream integration branch is `<upstream-integration-branch>`
 - Do not merge `<upstream-remote>/<upstream-default-branch>` directly into `<internal-dev-branch>` without first updating the local `<upstream-integration-branch>` branch and reviewing the delta<optional-warning-suffix>
-- Use this standard sync flow unless the user explicitly requests a different branch strategy:
+- Do not bulk-merge large upstream deltas in one step; inspect branch divergence, upstream-only commits, and patch size first, then split large updates into 500 to 1000 changed-line batches.
+- Use this bounded upstream sync flow unless the user explicitly requests a different branch strategy:
 
 ```bash
 cd <local-worktree-path>
 git fetch upstream
 git checkout <upstream-integration-branch>
+git rev-list --left-right --count origin/<internal-dev-branch>...upstream/<upstream-default-branch>
+git log --oneline --reverse origin/<internal-dev-branch>..upstream/<upstream-default-branch>
+git diff --shortstat origin/<internal-dev-branch>...upstream/<upstream-default-branch>
+# For small deltas only:
 git merge upstream/<upstream-default-branch>
+# For large deltas, merge a reviewed batch endpoint instead of the full upstream branch:
+# git merge <upstream-batch-commit>
 git push origin <upstream-integration-branch>
 git checkout <internal-dev-branch>
 git merge <upstream-integration-branch>
